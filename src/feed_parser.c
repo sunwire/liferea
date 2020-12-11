@@ -107,6 +107,8 @@ feed_free_parser_ctxt (feedParserCtxtPtr ctxt)
  * replaces the HTTP URI with the found feed source.
  *
  * Mutates ctxt->failed and ctxt->feed->parseErrors
+ *
+ * Returns: TRUE on success
  */
 static gboolean
 feed_parser_auto_discover (feedParserCtxtPtr ctxt)
@@ -136,10 +138,12 @@ feed_parser_auto_discover (feedParserCtxtPtr ctxt)
 		subscription_cancel_update (ctxt->subscription);
 		subscription_update (ctxt->subscription, FEED_REQ_RESET_TITLE);
 		g_free (source);
-	} else {
-		debug0 (DEBUG_UPDATE, "No feed link found!");
-		g_string_append (ctxt->feed->parseErrors, _("The URL you want Liferea to subscribe to points to a webpage and the auto discovery found no feeds on this page. Maybe this webpage just does not support feed auto discovery."));
+		return TRUE;
 	}
+
+	debug0 (DEBUG_UPDATE, "No feed link found!");
+	g_string_append (ctxt->feed->parseErrors, _("The URL you want Liferea to subscribe to points to a webpage and the auto discovery found no feeds on this page. Maybe this webpage just does not support feed auto discovery."));
+	return FALSE;
 }
 
 static void
