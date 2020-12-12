@@ -313,7 +313,9 @@ feed_process_update_result (subscriptionPtr subscription, const struct updateRes
 
 	debug_enter ("feed_process_update_result");
 
-	if (result->data) {
+	if (result->httpstatus >= 400) {
+		feed->error = FEED_FETCH_ERROR_NET;
+	} else if (result->data) {
 		/* parse the new downloaded feed into feed and itemSet */
 		ctxt = feed_create_parser_ctxt ();
 		ctxt->feed = feed;
@@ -322,22 +324,10 @@ feed_process_update_result (subscriptionPtr subscription, const struct updateRes
 		ctxt->subscription = subscription;
 
 		/* try to parse the feed */
-		feed_parse (ctxt);
-
-		if (ctxt->failed) {
-			/* No feed found, display an error */
-			node->available = FALSE;
-
-			g_string_prepend (feed->parseErrors, _("<p>Could not detect the type of this feed! Please check if the source really points to a resource provided in one of the supported syndication formats!</p>"
-			                                       "XML Parser Output:<br /><div class='xmlparseroutput'>"));
-			g_string_append (feed->parseErrors, "</div>");
-		} else if (!ctxt->failed && !ctxt->feed->fhp) {
-			/* There's a feed but no Handler. This means autodiscovery
-			 * found a feed, but we still need to download it.
-			 * An update should be in progress that will process it */
-		} else {
-			/* Feed found, process it */
+		if (feed_parse (ctxt)) {
 			itemSetPtr	itemSet;
+
+			g_assert (NULL != ctxt->feed->fhp);
 
 			node->available = TRUE;
 
@@ -354,15 +344,18 @@ feed_process_update_result (subscriptionPtr subscription, const struct updateRes
 
 			if (flags > 0)
 				db_subscription_update (subscription);
-
-			liferea_shell_set_status_bar (_("\"%s\" updated..."), node_get_title (node));
 		}
 
 		feed_free_parser_ctxt (ctxt);
 	} else {
-		node->available = FALSE;
+		feed->error = FEED_FETCH_ERROR_XML;
+	}
 
+	if (FEED_FETCH_ERROR_NONE != feed->error) {
+		node->available = FALSE;
 		liferea_shell_set_status_bar (_("\"%s\" is not available"), node_get_title (node));
+	} else {
+		liferea_shell_set_status_bar (_("\"%s\" updated..."), node_get_title (node));
 	}
 
 	feed_list_view_update_node (node->id);
