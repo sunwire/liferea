@@ -1066,6 +1066,23 @@ static const GActionEntry liferea_shell_link_gaction_entries[] = {
 	{"email-the-author", email_the_author, "t", NULL, NULL}
 };
 
+/* Pane position hack https://github.com/lwindolf/liferea/issues/901 */
+static gboolean restore_panes_hack(void *data)
+{
+    gint    last_vpane_pos, last_hpane_pos, last_wpane_pos;
+
+	conf_get_int_value (LAST_VPANE_POS, &last_vpane_pos);
+	if (last_vpane_pos)
+		gtk_paned_set_position (GTK_PANED (liferea_shell_lookup ("leftpane")), last_vpane_pos);
+	conf_get_int_value (LAST_HPANE_POS, &last_hpane_pos);
+	if (last_hpane_pos)
+		gtk_paned_set_position (GTK_PANED (liferea_shell_lookup ("normalViewPane")), last_hpane_pos);
+	conf_get_int_value (LAST_WPANE_POS, &last_wpane_pos);
+	if (last_wpane_pos)
+		gtk_paned_set_position (GTK_PANED (liferea_shell_lookup ("wideViewPane")), last_wpane_pos);
+    return FALSE;
+}
+
 static void
 liferea_shell_restore_state (const gchar *overrideWindowState)
 {
@@ -1130,6 +1147,9 @@ liferea_shell_restore_state (const gchar *overrideWindowState)
 	conf_get_int_value (LAST_WPANE_POS, &last_wpane_pos);
 	if (last_wpane_pos)
 		gtk_paned_set_position (GTK_PANED (liferea_shell_lookup ("wideViewPane")), last_wpane_pos);
+
+    /* Pane position hack https://github.com/lwindolf/liferea/issues/901 */
+    g_timeout_add (600, (GSourceFunc) restore_panes_hack, (gpointer) NULL);
 
 	conf_get_bool_value (LAST_WINDOW_MAXIMIZED, &last_window_maximized);
 	if (!last_window_maximized) {
